@@ -16,3 +16,21 @@
 - **Dataset is not committed** (6.4 MB at seed 7, scale 1.0); `make data` regenerates it in ~1 s.
 - **IOC feed is partial on purpose:** it covers some attacker infrastructure plus decoys never seen in the logs,
   and omits the C4 spray source, so intel alone cannot solve every hunt.
+
+## M2 — MCP service
+- **Official `mcp` SDK, FastMCP, async.** Store queries run in a worker thread (`anyio.to_thread`) so the event loop
+  is never blocked. Logs are loaded once into memory (fits easily at this size); an index is not needed yet.
+- **Read-only by construction:** no tool writes anything except the audit log. `propose_detection_rule` only drafts
+  and dry-runs a rule.
+- **Allow-list at registration:** only tools named in the allow-list (`--allow` / `ATH_ALLOWED_TOOLS`) are registered,
+  so a disallowed tool does not exist for the client. Unknown names in the allow-list fail at startup.
+- **Validation:** strict patterns for host, user, IP, ATT&CK id and ISO timestamps; length caps and no control
+  characters on free text; `limit` in [1, 200]; rule fields checked against the per-log-type schema and the
+  supported Sigma modifiers. Failures are raised as tool errors and audited as `rejected`.
+- **Result-size limits:** at most 200 events per call and 60 KB per serialized result (events are dropped from the
+  tail and `truncated: true` is set). The agent re-serialises structured results as compact JSON and caps what the model sees at 60 K chars.
+- **Audit log:** one JSONL record per call with UTC time, tool, args, status (ok/rejected/error), result size,
+  returned count, truncation flag and duration. Calls to unregistered tools are refused by the SDK before they
+  reach the server's handlers, so they are recorded in the agent trace instead.
+- **Sigma subset:** one `selection` map, AND across fields, OR across list values, modifiers
+  `contains/startswith/endswith`, case-insensitive. Enough for M2 dry-runs; M4 will extend it into the validator.
