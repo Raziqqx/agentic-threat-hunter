@@ -115,3 +115,20 @@ What they do not protect against:
   append-only by convention, not tamper-evident (no hashing or signing).
 - **Rule deployment risk.** Validated rules are scored on synthetic data only; their precision on real traffic is
   unknown.
+
+## Review fixes: eval coverage, caveats, budget disclosure
+
+- **Mock playbooks for H2-H4.** `MockProvider` now routes on the hypothesis wording (`agent.llm.route`) to one of
+  four scripted playbooks: SSH brute force, web shell (shell command in a query string -> attacker IP -> requests in
+  the prior 30 min -> processes spawned by the web server -> download and connection back), credential dumping
+  (`/etc/shadow` read -> `crontab` on that host -> the scheduled binary parsed from the cron entry -> its runs ->
+  the external IP of the first run -> all beacons), and spraying (failed logins paged forward by time -> source with
+  >= 15 distinct accounts -> its successful login -> `useradd` on that host). Every pivot value comes from a tool
+  result; the heuristics (web-server parents, shell verbs, cron syntax, thresholds) are generic and shared with the
+  baseline mock, which applies them to its sample only.
+- **Exploit window.** The attacker IP also makes benign-looking requests hours earlier; the web-shell playbook only
+  attributes requests in the 30 minutes before the first shell hit to T1190 (precision over a wider net).
+- **Budget-matched baseline.** Cheap with the mock, so added as a third system (`baseline_matched`): the baseline
+  sample is sized to 4 x the agent's cumulative input tokens for the same hunt. The plain baseline stays as the
+  one-tool-result-sized reference. Both caveats (mock results validate the pipeline, not LLM capability; unequal
+  token budgets) are generated at the top of `results/eval.md`.
