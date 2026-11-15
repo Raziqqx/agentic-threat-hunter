@@ -34,3 +34,19 @@
   reach the server's handlers, so they are recorded in the agent trace instead.
 - **Sigma subset:** one `selection` map, AND across fields, OR across list values, modifiers
   `contains/startswith/endswith`, case-insensitive. Enough for M2 dry-runs; M4 will extend it into the validator.
+
+## M3 — agent
+- **Manual tool loop** (not the SDK tool runner) so budgets, the gate and grounding checks sit in one place and the
+  mock and Anthropic providers share the exact same loop. Internal history uses the Anthropic Messages shape.
+- **Provider selection:** `auto` uses Anthropic when `ANTHROPIC_API_KEY` is set, otherwise the mock; tests force the
+  mock. Model `claude-opus-5-5`, effort `medium`, server-side refusal fallback enabled (`fallbacks: "default"`)
+  because security-hunting prompts can trip cyber classifiers; a `refusal` stop ends the hunt cleanly.
+- **Budgets:** steps (LLM calls), total tokens (reported usage; the mock estimates ~4 chars/token deterministically)
+  and wall time (`anyio.fail_after` around every LLM and tool call).
+- **Human-approval gate:** risky actions are containment recommendations via an agent-local
+  `request_response_action` tool. It never executes anything — it records the decision. Policy `deny` (default,
+  tests), `approve` (`--approve`) or `prompt` (`--interactive`). The MCP server itself stays read-only.
+- **Evidence grounding:** a finding is `verified` only if every cited event id appeared in a tool result during the
+  hunt; fabricated ids are kept but flagged.
+- **Mock provider** implements one playbook (SSH brute force). It derives every pivot from tool results rather than
+  from the labels, so the e2e test exercises the real server, safeguards and loop.
