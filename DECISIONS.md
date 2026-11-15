@@ -50,3 +50,31 @@
   hunt; fabricated ids are kept but flagged.
 - **Mock provider** implements one playbook (SSH brute force). It derives every pivot from tool results rather than
   from the labels, so the e2e test exercises the real server, safeguards and loop.
+
+## M4 — eval
+- **Validator is separate from the server's dry-run matcher** (`eval/sigma_validator.py` vs `service/sigma.py`): it
+  parses the YAML the server emits, so the eval checks the artefact an analyst would deploy, not the agent's dict.
+  A test asserts both agree on the same rule. PyYAML (`safe_load` only) was added for parsing.
+- **Supported Sigma subset** is documented in the module docstring: `logsource.service` = our log types, named
+  selections (map = AND, list of maps = OR), modifiers `contains/startswith/endswith/re` + `all`, wildcards in plain
+  values, conditions with `and/or/not`, parentheses, `1 of`/`all of` pattern|them. Anything else (`base64`, `cidr`,
+  keyword lists, `null`, `timeframe`, `| count()`, `near`, `logsource.category`) raises `SigmaUnsupported` naming the
+  feature, so an unsupported rule is never silently scored as "zero hits".
+- **Scoring:** ground truth per technique is the union of labelled event ids across chains (T1078 is in C1 and C4).
+  Rule P/R: hits of all rules tagged `attack.<technique>` over the *full* logs vs ground truth. Evidence precision:
+  cited ids in findings for that technique that are ground truth. "Detected" = at least one correct cited id.
+  Precision with no hits/citations is reported as `n/a`, not 0 or 1.
+- **Baseline strawman** (`eval/baseline.py`): one call, no tools. Prompt = hypothesis + seeded uniform sample of the
+  hypothesis' log types, filled to the same 60 K-char budget the agent may see from one tool result. The mock
+  baseline runs the *same* heuristic as the agent mock on that sample, with the brute-force threshold scaled by the
+  sampling fraction (min 3) so sampling alone does not hide the attack, and emits the same rule shape. Its only
+  handicap is the one under test: it cannot fetch events it was not shown, so it cannot pivot.
+- **Mock eval runs only H1 (SSH brute force)** because the mock implements one playbook; the four-hypothesis set in
+  `eval/hypotheses.json` runs with `--provider anthropic`. Three seeds (7, 21, 42) give sampling variance.
+- **Cost = LLM calls, tool calls and tokens.** Mock tokens are ~4 chars/token estimates and are labelled as such; no
+  dollar figure is quoted because it would be invented. Latency is measured wall time (`time.monotonic`); for the
+  mock it is loop/tool overhead only.
+- **Result (mock, 3 seeds):** agent detects 12/15 (seed, technique) cases with 1.0 evidence precision, rule
+  P 0.80 / R 0.91 micro; baseline detects 1/15, rule R 0.30. The agent's rule loses precision because its "noisy
+  sources" list also contains the C4 spray source (labelled T1110.003) — a real over-generalisation, kept visible.
+  Neither system finds T1560.001 (archive), which needs a process-log pivot the mock playbook does not make.

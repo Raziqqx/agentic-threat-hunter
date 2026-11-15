@@ -1,0 +1,10 @@
+[
+  {"id": "H1", "chain": "C1", "mock": true, "log_types": ["auth", "conn"],
+   "text": "SSH brute force against internet-facing servers followed by data theft"},
+  {"id": "H2", "chain": "C2", "mock": false, "log_types": ["web", "process"],
+   "text": "Exploitation of the public web server leading to a web shell"},
+  {"id": "H3", "chain": "C3", "mock": false, "log_types": ["process", "conn"],
+   "text": "Credential dumping and persistence followed by command-and-control beaconing"},
+  {"id": "H4", "chain": "C4", "mock": false, "log_types": ["auth", "process"],
+   "text": "Password spraying against SSH and creation of new local accounts"}
+]
