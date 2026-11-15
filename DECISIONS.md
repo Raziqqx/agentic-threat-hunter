@@ -78,3 +78,40 @@
   P 0.80 / R 0.91 micro; baseline detects 1/15, rule R 0.30. The agent's rule loses precision because its "noisy
   sources" list also contains the C4 spray source (labelled T1110.003) — a real over-generalisation, kept visible.
   Neither system finds T1560.001 (archive), which needs a process-log pivot the mock playbook does not make.
+
+## M5 — CI, reproducibility, threat model
+- **CI** (`.github/workflows/ci.yml`): ruff check + format check, pytest, then `make data eval` as a smoke run;
+  `ANTHROPIC_API_KEY` is forced empty so only the mock provider can run. Eval outputs are uploaded as an artifact.
+- **`make reproduce`**: wipes `data/`, then lint, tests, regenerate data, eval and one demo hunt (mock). Numbers in
+  `results/eval.md` are identical across runs except wall times.
+
+### Threat model of the safeguards
+Assets: the log store and anything the hunt could affect (hosts, accounts, firewall). Threat: the LLM acting
+wrongly, whether by mistake or because attacker-controlled text in the logs (user agents, URIs, command lines)
+injects instructions into tool results.
+
+What the controls protect against:
+- **Read-only tools:** a hijacked or confused model cannot modify, delete or exfiltrate-by-write; the worst a tool
+  call can do is read synthetic logs. The audit log is the only write, and the model cannot address it.
+- **Allow-list (server registration + agent-side check):** the model cannot reach a tool that was not deliberately
+  exposed, even if it hallucinates or is told to call one; disallowed calls are refused and traced.
+- **Input validation and result caps:** malformed or oversized arguments are rejected and audited; result size
+  limits stop a single call from flooding the context or the budget.
+- **Approval gate:** every containment recommendation needs a human decision (default deny) and is only recorded,
+  never executed, so an injected "block this IP / disable this admin" cannot take effect on its own.
+- **Budgets:** step, token and wall-time limits bound cost and stop runaway loops.
+- **Grounding check + audit trail:** fabricated evidence ids are flagged, and every tool call is reconstructable.
+
+What they do not protect against:
+- **Wrong conclusions.** A prompt injection can still steer *what the model reports*: suppress a finding, blame an
+  innocent host, or write a weak/over-broad rule. Grounding only proves a cited id was seen, not that it supports
+  the claim. The eval and human review of findings are the mitigation, not the gate.
+- **Approver error / fatigue.** The gate is only as good as the human; a persuasive justification written by an
+  injected model can win approval. Approved actions are recorded, not executed, which limits but does not remove
+  this risk once a person acts on them.
+- **Read-path leakage.** With a real provider, the log contents a tool returns are sent to that API. Fine for
+  synthetic data; real logs would need a data-handling review first.
+- **Compromise below the agent:** a tampered server, dataset, dependency or host is out of scope; the audit log is
+  append-only by convention, not tamper-evident (no hashing or signing).
+- **Rule deployment risk.** Validated rules are scored on synthetic data only; their precision on real traffic is
+  unknown.
