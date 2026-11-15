@@ -74,7 +74,7 @@
 - **Cost = LLM calls, tool calls and tokens.** Mock tokens are ~4 chars/token estimates and are labelled as such; no
   dollar figure is quoted because it would be invented. Latency is measured wall time (`time.monotonic`); for the
   mock it is loop/tool overhead only.
-- **Result (mock, 3 seeds):** agent detects 12/15 (seed, technique) cases with 1.0 evidence precision, rule
+- **Result (mock, 3 seeds, H1 only; superseded — see results/eval.md for all four hypotheses after 95dbb53):** agent detects 12/15 (seed, technique) cases with 1.0 evidence precision, rule
   P 0.80 / R 0.91 micro; baseline detects 1/15, rule R 0.30. The agent's rule loses precision because its "noisy
   sources" list also contains the C4 spray source (labelled T1110.003) — a real over-generalisation, kept visible.
   Neither system finds T1560.001 (archive), which needs a process-log pivot the mock playbook does not make.
