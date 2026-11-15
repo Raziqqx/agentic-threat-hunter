@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# Generated dataset: regenerate with `make data` (seeded, deterministic)
+data/
+results/audit*.jsonl
+results/runs/
+.env
