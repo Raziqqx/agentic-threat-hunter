@@ -4,6 +4,8 @@ An LLM agent that hunts for attacker activity in security logs. It works through
 MCP server, proposes Sigma detection rules, and is scored against a single-prompt baseline on labelled
 MITRE ATT&CK attack chains.
 
+**Start here: [docs/GUIDE.md](docs/GUIDE.md)** (how the code works, end to end, in plain English).
+
 > **Read this first: every number below comes from the mock LLM provider.** The mock is a set of
 > author-scripted heuristic playbooks. It pivots only on values returned by tool calls, never on the labels,
 > but a human wrote the pivots. So the results show that the pipeline, the MCP tools, the safeguards and the
@@ -14,7 +16,7 @@ MITRE ATT&CK attack chains.
 ## What it is
 
 - **Synthetic log generator** (`datagen/`): four seeded JSONL logs (auth, process, conn, web), with four
-  labelled attack chains covering 14 technique steps, false-positive bait, and a deliberately partial IOC feed.
+  labelled attack chains covering 15 technique steps (14 distinct ATT&CK techniques), false-positive bait, and a deliberately partial IOC feed.
 - **MCP server** (`service/`): five read-only tools (`search_logs`, `get_host_timeline`, `lookup_ioc`,
   `correlate_events`, `propose_detection_rule`). It has a tool allow-list, strict input validation, result-size
   caps and a JSONL audit log.
@@ -35,17 +37,46 @@ MITRE ATT&CK attack chains.
 - Precision needs real noise. Benign typo logins, nightly internal backups and benign outbound HTTPS are planted
   so that a lazy rule loses precision.
 
-## Demo
+## See it working
 
-There are no screenshots yet. To record a demo, run these commands from a clean checkout (mock provider, no key needed):
+No GUI: the project is a command-line agent, so "seeing it" means a terminal transcript plus the files it writes.
+A captured run of these steps is in [docs/demo_transcript.md](docs/demo_transcript.md). Mock provider, no key needed.
 
-```bash
-make venv
-make hunt            # generates data, runs one SSH brute-force hunt, writes results/runs/hunt-*.json
-make eval            # writes results/eval.md, eval_techniques.csv, eval_cost.csv
-```
+1. **Run one hunt.**
+   ```bash
+   make venv && make hunt
+   ```
+   You should see `completed: 4 findings, 1 rules, 8 steps, ... tokens -> results/runs/hunt-<time>.json`, then four
+   findings (T1110.001, T1078, T1021.004, T1048), each with `verified=True`, and
+   `action block_ip 203.0.113.66: denied` (the human gate denies by default).
+2. **Replay what the agent did, step by step, and the Sigma rule it wrote.**
+   ```bash
+   .venv/bin/python -c "import json,glob; r=json.load(open(sorted(glob.glob('results/runs/hunt-*.json'))[-1])); [print(t['step'], [c['name'] for c in t['tool_calls']], t['text'][:60]) for t in r['trace']]; print(r['rules'][0]['sigma_yaml'])"
+   ```
+   You should see 8 numbered steps (search_logs, lookup_ioc, search_logs, search_logs, get_host_timeline,
+   propose_detection_rule, request_response_action, then the final answer), followed by a Sigma YAML rule tagged
+   `attack.t1110.001`.
+3. **Read the audit log the MCP server wrote.**
+   ```bash
+   tail -n 3 results/audit.jsonl
+   ```
+   You should see one JSON line per tool call with `tool`, `args`, `status: "ok"`, `result_bytes`, `truncated`
+   and `duration_ms`.
+4. **Approve a containment action through the human gate.**
+   ```bash
+   echo y | .venv/bin/python -m agent.cli --data data --provider mock --interactive --hypothesis "SSH brute force against internet-facing servers"
+   ```
+   You should see the prompt `Approve request_response_action {...}? [y/N]` and, at the end,
+   `action block_ip 203.0.113.66: approved`. Nothing is executed; the decision is only recorded.
+5. **Run the evaluation and open the report.**
+   ```bash
+   make eval
+   ```
+   The tables print to the terminal and are written to `results/eval.md`. You should see the agent at 42/45
+   techniques detected against 1/45 (baseline) and 5/45 (baseline_matched). Only the wall-time columns change
+   between runs.
 
-Each hunt writes a JSON trace to `results/runs/` and appends every tool call to `results/audit.jsonl`.
+Each hunt writes a JSON trace to `results/runs/` and appends every MCP tool call to `results/audit.jsonl`.
 
 ## Quick start
 
@@ -113,7 +144,7 @@ service/                   MCP server, store, safeguards, dry-run Sigma matcher
 agent/                     LLM providers (Anthropic + mock), tool loop, CLI
 eval/                      baseline, Sigma validator, eval runner, hypotheses.json
 results/                   eval.md, CSVs, hunt traces, audit log
-docs/                      FEATURES.md, DESIGN.md, INTERVIEW_NOTES.md
+docs/                      GUIDE.md, FEATURES.md, DESIGN.md, INTERVIEW_NOTES.md, demo_transcript.md
 ```
 
 CI (`.github/workflows/ci.yml`) runs ruff, pytest and a `make data eval` smoke test with `ANTHROPIC_API_KEY`
@@ -125,5 +156,5 @@ AI security engineer, detection engineer or threat hunter, ML/LLM agent engineer
 The project shows MCP tool design under adversarial input, agent safeguards, Sigma rule engineering, and an
 honest eval methodology.
 
-More detail: [docs/FEATURES.md](docs/FEATURES.md), [docs/DESIGN.md](docs/DESIGN.md),
+More detail: [docs/GUIDE.md](docs/GUIDE.md), [docs/FEATURES.md](docs/FEATURES.md), [docs/DESIGN.md](docs/DESIGN.md),
 [docs/INTERVIEW_NOTES.md](docs/INTERVIEW_NOTES.md), [RESUME_BULLETS.md](RESUME_BULLETS.md).

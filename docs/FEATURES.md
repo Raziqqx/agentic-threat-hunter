@@ -46,7 +46,7 @@ flowchart LR
 
 This feature produces the dataset, its ground truth and an IOC feed, with no third-party data. One
 `random.Random(seed)` drives everything. Events are sorted by timestamp and only then given ids, so the same seed
-always produces byte-identical output. The generator plants four ATT&CK chains with 14 technique steps: SSH brute
+always produces byte-identical output. The generator plants four ATT&CK chains with 15 technique steps (14 distinct techniques; T1078 appears in two chains): SSH brute
 force to exfiltration; web exploit to web shell to tool transfer; shadow dump to cron to HTTPS beacon; and password
 spray to a new local account. It also adds false-positive bait (typo logins, nightly internal backups, benign
 HTTPS). Labels are written to a separate `labels.json`, and a test checks that they never leak into the logs.

@@ -7,7 +7,7 @@
   `event_id`s (`<log_type>-NNNNNN`), so ids and bytes are identical for a seed. Tests compare SHA-256 hashes.
 - **Labels live outside the logs** (`labels.json`, per chain → technique → event ids). Generator tags events with a
   private `_label` that is stripped before writing; a test asserts it never leaks.
-- **Four chains, 14 technique steps:** C1 SSH brute force → valid account → lateral SSH → archive → exfil
+- **Four chains, 15 technique steps (14 distinct techniques):** C1 SSH brute force → valid account → lateral SSH → archive → exfil
   (T1110.001, T1078, T1021.004, T1560.001, T1048); C2 web exploit → web shell → commands → tool transfer (T1190,
   T1505.003, T1059.004, T1105); C3 shadow dump → cron persistence → HTTPS beacon (T1003.008, T1053.003, T1071.001);
   C4 password spray → valid account → local account (T1110.003, T1078, T1136.001).
