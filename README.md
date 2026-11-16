@@ -4,8 +4,6 @@ An LLM agent that hunts for attacker activity in security logs. It works through
 MCP server, proposes Sigma detection rules, and is scored against a single-prompt baseline on labelled
 MITRE ATT&CK attack chains.
 
-**Start here: [docs/GUIDE.md](docs/GUIDE.md)** (how the code works, end to end, in plain English).
-
 > **Read this first: every number below comes from the mock LLM provider.** The mock is a set of
 > author-scripted heuristic playbooks. It pivots only on values returned by tool calls, never on the labels,
 > but a human wrote the pivots. So the results show that the pipeline, the MCP tools, the safeguards and the
@@ -144,17 +142,9 @@ service/                   MCP server, store, safeguards, dry-run Sigma matcher
 agent/                     LLM providers (Anthropic + mock), tool loop, CLI
 eval/                      baseline, Sigma validator, eval runner, hypotheses.json
 results/                   eval.md, CSVs, hunt traces, audit log
-docs/                      GUIDE.md, FEATURES.md, DESIGN.md, INTERVIEW_NOTES.md, demo_transcript.md
+docs/                      FEATURES.md, DESIGN.md, demo_transcript.md
 ```
 
 CI (`.github/workflows/ci.yml`) runs ruff, pytest and a `make data eval` smoke test with `ANTHROPIC_API_KEY`
 forced empty, then uploads the eval outputs as an artifact.
 
-## Target roles
-
-AI security engineer, detection engineer or threat hunter, ML/LLM agent engineer, and security tooling engineer.
-The project shows MCP tool design under adversarial input, agent safeguards, Sigma rule engineering, and an
-honest eval methodology.
-
-More detail: [docs/GUIDE.md](docs/GUIDE.md), [docs/FEATURES.md](docs/FEATURES.md), [docs/DESIGN.md](docs/DESIGN.md),
-[docs/INTERVIEW_NOTES.md](docs/INTERVIEW_NOTES.md), [RESUME_BULLETS.md](RESUME_BULLETS.md).
